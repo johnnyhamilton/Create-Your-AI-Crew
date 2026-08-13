@@ -1,0 +1,8 @@
+{
+  "name": "Create Your AI Crew",
+  "description": "A guided conversation to build and deploy your personalized AI crew.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
