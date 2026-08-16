@@ -377,7 +377,7 @@ export default function App() {
 
       <main className="flex-1">
         {appState === 'welcome' && (
-          <WelcomeState onStart={handleStartChat} onSignIn={handleSignInOrDashboard} />
+          <WelcomeState onStart={handleStartChat} onSignIn={handleSignInOrDashboard} user={user} />
         )}
 
         {appState === 'admin' && user && (

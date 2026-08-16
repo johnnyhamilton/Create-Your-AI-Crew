@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { User } from 'firebase/auth';
 import { ArrowRight, ShieldCheck, Clock, Sparkles, ChevronRight } from 'lucide-react';
 import { PrivacyModal } from './PrivacyModal';
 
 interface WelcomeStateProps {
   onStart: () => void;
   onSignIn: () => void;
+  user?: User | null;
 }
 
-export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn }) => {
+export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn, user }) => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   return (
@@ -65,7 +67,7 @@ export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn })
           <span>Have a guided conversation to build your first crew member in about 30 minutes.</span>
         </p>
 
-        {onSignIn && (
+        {onSignIn && !user && (
           <div className="pt-3 border-t border-stone-200/80 w-full text-center">
             <span className="text-xs text-stone-500 mr-2">Already have a saved crew?</span>
             <button
