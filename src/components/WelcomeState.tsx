@@ -1,19 +1,27 @@
-import React from 'react';
-import { ArrowRight, ShieldCheck, Clock, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, ShieldCheck, Clock, Sparkles, ChevronRight } from 'lucide-react';
+import { PrivacyModal } from './PrivacyModal';
 
 interface WelcomeStateProps {
   onStart: () => void;
+  onSignIn: () => void;
 }
 
-export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart }) => {
+export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn }) => {
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center px-6 py-12 max-w-3xl mx-auto text-center">
       {/* Privacy Tag with Gold Accent highlight */}
-      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-100 text-[#1B1B1B]/80 text-xs font-medium mb-8 border border-stone-200">
+      <button
+        type="button"
+        onClick={() => setShowPrivacyModal(true)}
+        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200/80 text-[#1B1B1B]/80 text-xs font-medium mb-8 border border-stone-200 transition-colors cursor-pointer"
+      >
         <ShieldCheck className="w-3.5 h-3.5 text-[#649940]" />
         <span>Ephemeral Browser Session • Private & Unstored</span>
         <Sparkles className="w-3 h-3 text-[#CBA62C] ml-0.5" />
-      </div>
+      </button>
 
       {/* Main Title (Keeps display serif) */}
       <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight text-[#004364] leading-[1.15] mb-6">
@@ -25,9 +33,19 @@ export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart }) => {
         You know what matters to you. Build the crew that helps you get there. An AI crew configured to fit you, your work, your voice, and how you think — ready to deploy on every AI platform you use.
       </p>
 
-      {/* Ownership Statement */}
+      {/* Ownership / Privacy Statement */}
       <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 max-w-xl text-left sm:text-center mb-10 text-sm text-[#1B1B1B]/80 leading-relaxed">
-        <p className="font-medium text-[#004364] mb-1">Your privacy is built-in by design</p>
+        <p className="font-medium text-[#004364] mb-1">
+          Your privacy is built-in by design.{' '}
+          <button
+            type="button"
+            onClick={() => setShowPrivacyModal(true)}
+            className="text-[#649940] hover:text-[#527d34] font-semibold underline inline-flex items-center gap-0.5 cursor-pointer ml-1"
+          >
+            <span>Explore more here.</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </p>
         You own everything here. This conversation isn't recorded or kept. Take your crew with you when you leave — nothing is stored.
       </div>
 
@@ -46,7 +64,26 @@ export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart }) => {
           <Clock className="w-3.5 h-3.5 text-stone-400" />
           <span>Have a guided conversation to build your first crew member in about 30 minutes.</span>
         </p>
+
+        {onSignIn && (
+          <div className="pt-3 border-t border-stone-200/80 w-full text-center">
+            <span className="text-xs text-stone-500 mr-2">Already have a saved crew?</span>
+            <button
+              onClick={onSignIn}
+              className="text-xs font-semibold text-[#649940] hover:text-[#527d34] underline cursor-pointer"
+            >
+              Sign in to your dashboard
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Privacy Modal */}
+      <PrivacyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </div>
   );
 };
+

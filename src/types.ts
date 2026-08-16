@@ -1,4 +1,4 @@
-export type AppState = 'welcome' | 'chat' | 'delivery';
+export type AppState = 'welcome' | 'chat' | 'delivery' | 'dashboard' | 'admin';
 
 export interface Message {
   id: string;
@@ -8,16 +8,23 @@ export interface Message {
 }
 
 export interface FoundationRecord {
+  crewName?: string;
   personName?: string;
+  personaName?: string;
   coreValues?: string[];
   communicationStyle?: string;
   workingPreferences?: string;
   keyGoals?: string[];
+  focuses?: string[];
   [key: string]: any;
 }
 
 export interface SpecialistRecord {
+  id?: string;
+  name?: string;
   role?: string;
+  focus?: string;
+  focuses?: string[];
   archetype?: string;
   directives?: string[];
   specializations?: string[];

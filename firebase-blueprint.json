@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "User": {
+      "path": "users/{userId}",
+      "fields": {
+        "uid": { "type": "string", "description": "User ID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "createdAt": { "type": "timestamp", "description": "Creation timestamp" }
+      }
+    },
+    "Foundation": {
+      "path": "users/{userId}/foundation/{foundationId}",
+      "fields": {
+        "userId": { "type": "string", "description": "Owner User ID" },
+        "crewName": { "type": "string", "description": "Overall Crew Name" },
+        "anchorPhrase": { "type": "string", "description": "Core Anchor Phrase" },
+        "captainsWords": { "type": "array", "description": "List of captain's core words" },
+        "traits": { "type": "map", "description": "Key foundation traits" },
+        "updatedAt": { "type": "timestamp", "description": "Last update timestamp" }
+      }
+    },
+    "CrewMember": {
+      "path": "users/{userId}/crew/{memberId}",
+      "fields": {
+        "id": { "type": "string", "description": "Member ID" },
+        "userId": { "type": "string", "description": "Owner User ID" },
+        "name": { "type": "string", "description": "Specialist Name" },
+        "role": { "type": "string", "description": "Specialist Role" },
+        "focus": { "type": "string", "description": "Focus and scope" },
+        "personalityAnchor": { "type": "string", "description": "Personality anchor archetype" },
+        "tuning": { "type": "map", "description": "Dial tuning values" },
+        "createdAt": { "type": "timestamp", "description": "Creation timestamp" }
+      }
+    }
+  }
+}

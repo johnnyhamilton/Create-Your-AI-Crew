@@ -20,14 +20,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
+a:not([class*="text-"]) {
   color: #657590;
   transition: color 0.15s ease;
 }
-a:visited {
+a:not([class*="text-"]):visited {
   color: #6C576A;
 }
-a:hover {
+a:not([class*="text-"]):hover {
   color: #004364;
 }
 

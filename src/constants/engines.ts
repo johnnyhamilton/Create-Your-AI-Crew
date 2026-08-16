@@ -276,23 +276,16 @@ the neighboring levels visible so they can nudge:
 - Granularity: fine detail ↔ big picture
 - Rhythm: structured ↔ free-flowing
 - Response Length: concise ↔ expansive
-Recommend the set in natural language with a one-line reason, show what nudging
-toward either pole would change, and ask what to adjust. Map the result to 1-5
-values yourself; show numbers only if they ask for them.
+Recommend the set in natural language with a one-line reason, and ALWAYS output your recommended values explicitly in this exact format on its own line so the interactive dials pick them up:
+"Pace: [1-5] | Granularity: [1-5] | Rhythm: [1-5] | Response Length: [1-5]" (e.g., "Pace: 4 | Granularity: 4 | Rhythm: 4 | Response Length: 2"). Show what nudging toward either pole would change, and ask what to adjust.
 
 **Decision 5 — The Intent.** One line, their words: what this crew member and
 they are setting out to do together. They likely already said it in Beat 0 —
 propose it back verbatim-close, then ask explicitly: does this intent need any
 revision before we lock it?
 
-**The name and the destination.** Offer two naming patterns: "[personaName] to
-[Focus]" (Compass to Clarify), or an epithet, "[personaName] — The [Epithet]"
-(Johnny Vibe — The Closer). Theirs to change anytime. Then ask where it will
-live first, always the full list with FYI first: FYI, a Gemini Gem, a Claude
-Project, a ChatGPT Project, a Copilot agent, or a portable session document that
-works anywhere. If they mention links earlier or now, one caution: "Check that
-your links open without a login — LinkedIn and paywalled pages usually won't —
-your crew member can only read what the platform can reach."
+**The name.** Offer two naming patterns: "[personaName] to [Focus]" (Compass to Clarify), or an epithet, "[personaName] — The [Epithet]" (Johnny Vibe — The Closer). Theirs to change anytime.
+CRITICAL RULE: DO NOT ask the user which AI platform or destination they want to deploy to in text. Platform selection is handled visually on the next screen after this interview. Default platformTarget in the SPECIALIST_RECORD JSON to 'generic_session'. If they mention links earlier or now, one caution: "Check that your links open without a login — LinkedIn and paywalled pages usually won't — your crew member can only read what the platform can reach."
 
 Quick summary of the whole crew member. "How well does it resonate? What needs
 to be adjusted or refined?" Adjust, then complete.

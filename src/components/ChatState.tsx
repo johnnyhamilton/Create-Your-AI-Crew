@@ -1,16 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { User } from 'firebase/auth';
 import { Send, ArrowRight, Sparkles, RefreshCw, Mic, MicOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message, FoundationRecord, SpecialistRecord } from '../types';
 import { parseResponseMarkers } from '../utils/markerParser';
-import { TuningDials, isTuningMessage, parseTuningRecommendations } from './TuningDials';
 
 interface ChatStateProps {
   onRecordsReady: (foundation: FoundationRecord, specialist: SpecialistRecord) => void;
+  user?: User | null;
+  initialMode?: 'capture' | 'add_member';
+  userFoundation?: FoundationRecord | null;
+  crewMembers?: SpecialistRecord[];
 }
 
-export const ChatState: React.FC<ChatStateProps> = ({ onRecordsReady }) => {
+export const ChatState: React.FC<ChatStateProps> = ({
+  onRecordsReady,
+  user,
+  initialMode = 'capture',
+  userFoundation,
+  crewMembers = [],
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -19,7 +29,6 @@ export const ChatState: React.FC<ChatStateProps> = ({ onRecordsReady }) => {
   const [error, setError] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
-  const [submittedTuningIds, setSubmittedTuningIds] = useState<Record<string, boolean>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +118,38 @@ export const ChatState: React.FC<ChatStateProps> = ({ onRecordsReady }) => {
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
 
-    const initialTriggerText = JSON.stringify({ mode: 'capture', personName: null });
+    const hasFoundation =
+      userFoundation &&
+      typeof userFoundation === 'object' &&
+      Object.keys(userFoundation).length > 0;
+
+    const effectiveMode = initialMode === 'add_member' && hasFoundation ? 'add_member' : 'capture';
+
+    let initialTriggerText: string;
+
+    if (effectiveMode === 'add_member' && userFoundation) {
+      const personName = user?.displayName || userFoundation.personName || null;
+      const existingCrew = (crewMembers || []).map((m) => ({
+        name: m.name || '',
+        focus: m.focus || '',
+        role: m.role || '',
+        intent: m.intent || m.focus || '',
+      }));
+
+      initialTriggerText = JSON.stringify({
+        mode: 'add_member',
+        personName,
+        existingTraits: userFoundation,
+        existingCrew,
+      });
+    } else {
+      const personName = user?.displayName || null;
+      initialTriggerText = JSON.stringify({
+        mode: 'capture',
+        personName,
+      });
+    }
+
     const initialTriggerMsg: Message = {
       id: 'trigger-0',
       role: 'user',
@@ -256,11 +296,7 @@ export const ChatState: React.FC<ChatStateProps> = ({ onRecordsReady }) => {
           </div>
         )}
 
-        {visibleMessages.map((msg, index) => {
-          const isTuning = msg.role === 'guide' && isTuningMessage(msg.text);
-          const hasUserRepliedAfter = visibleMessages.slice(index + 1).some((m) => m.role === 'user');
-          const isTuningSubmitted = submittedTuningIds[msg.id] || hasUserRepliedAfter;
-
+        {visibleMessages.map((msg) => {
           return (
             <div
               key={msg.id}
@@ -300,19 +336,6 @@ export const ChatState: React.FC<ChatStateProps> = ({ onRecordsReady }) => {
                       >
                         {msg.text}
                       </ReactMarkdown>
-
-                      {isTuning && (
-                        <TuningDials
-                          initialValues={parseTuningRecommendations(msg.text)}
-                          isSubmitted={isTuningSubmitted}
-                          onConfirm={(confirmedValues) => {
-                            setSubmittedTuningIds((prev) => ({ ...prev, [msg.id]: true }));
-                            handleSend(
-                              `Pace ${confirmedValues.pace}, Granularity ${confirmedValues.granularity}, Rhythm ${confirmedValues.rhythm}, Response Length ${confirmedValues.responseLength}`
-                            );
-                          }}
-                        />
-                      )}
                     </div>
                   ) : (
                     <div className="inline-flex items-center gap-1.5 text-stone-400 text-sm py-2">

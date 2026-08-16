@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { User } from 'firebase/auth';
 import {
   Copy,
   Check,
@@ -11,7 +12,8 @@ import {
   Compass,
   FileCode,
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Bookmark
 } from 'lucide-react';
 import {
   FoundationRecord,
@@ -20,11 +22,18 @@ import {
   PlatformOption,
   GenerationPayload
 } from '../types';
+import { signInWithGoogle, saveCrewToFirestore } from '../lib/firebase';
 
 interface DeliveryStateProps {
   foundationRecord: FoundationRecord;
   specialistRecord: SpecialistRecord;
+  allCrewMembers?: SpecialistRecord[];
   onReset: () => void;
+  user?: User | null;
+  onUserSignedIn?: (user: User) => void;
+  onSaved?: () => void;
+  isSaved?: boolean;
+  onSaveCrew?: () => Promise<void>;
 }
 
 const PLATFORM_OPTIONS: PlatformOption[] = [
@@ -63,7 +72,13 @@ const PLATFORM_OPTIONS: PlatformOption[] = [
 export const DeliveryState: React.FC<DeliveryStateProps> = ({
   foundationRecord,
   specialistRecord,
+  allCrewMembers,
   onReset,
+  user,
+  onUserSignedIn,
+  onSaved,
+  isSaved: propIsSaved,
+  onSaveCrew,
 }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformTarget | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -75,6 +90,53 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
 
   const [copiedProfile, setCopiedProfile] = useState(false);
   const [copiedRecords, setCopiedRecords] = useState(false);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [localIsSaved, setLocalIsSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const isSaved = propIsSaved || localIsSaved;
+
+  const crewToAssemble =
+    allCrewMembers && allCrewMembers.length > 0
+      ? allCrewMembers
+      : specialistRecord
+      ? [specialistRecord]
+      : [];
+
+  const handleSaveMyCrew = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      if (onSaveCrew) {
+        await onSaveCrew();
+        setLocalIsSaved(true);
+      } else {
+        let currentUser = user;
+        if (!currentUser) {
+          currentUser = ((await signInWithGoogle()) as User) || null;
+          if (currentUser && onUserSignedIn) {
+            onUserSignedIn(currentUser);
+          }
+        }
+
+        if (!currentUser) {
+          throw new Error('Sign-in required to save your crew.');
+        }
+
+        await saveCrewToFirestore(currentUser.uid, foundationRecord, specialistRecord);
+        setLocalIsSaved(true);
+        if (onSaved) {
+          onSaved();
+        }
+      }
+    } catch (err: any) {
+      console.error('Save error:', err);
+      setSaveError(err.message || 'Failed to save crew. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleGenerate = async (platform: PlatformTarget) => {
     setSelectedPlatform(platform);
@@ -95,7 +157,7 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
       platformTarget: platform,
       defaultMember: 'ask',
       traits: foundationRecord,
-      crew: [specialistRecord],
+      crew: crewToAssemble,
     };
 
     try {
@@ -141,10 +203,18 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
     }
   };
 
+  const personaName =
+    foundationRecord?.personaName ||
+    foundationRecord?.crewName ||
+    (foundationRecord?.personName ? `${foundationRecord.personName}'s AI Crew` : 'My AI Crew');
+
   const fullRecordsJson = JSON.stringify(
     {
-      traits: foundationRecord,
-      crew: [specialistRecord],
+      traits: {
+        personaName,
+        ...foundationRecord,
+      },
+      crew: crewToAssemble,
     },
     null,
     2
@@ -294,41 +364,76 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
         <div className="space-y-4">
           <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs relative">
             {/* Card Action Buttons */}
-            <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-6">
-              <span className="text-xs text-[#1B1B1B]/60 font-mono">
-                crew-profile.md
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleCopy(generatedProfile, 'profile')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-xs text-[#1B1B1B] font-medium transition-colors cursor-pointer"
-                >
-                  {copiedProfile ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-[#649940]" />
-                      <span className="text-[#649940]">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() =>
-                    handleDownload(
-                      generatedProfile,
-                      'crew-profile.md',
-                      'text/markdown'
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#004364] hover:bg-[#00314a] text-xs text-white font-medium transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .md</span>
-                </button>
+            <div className="border-b border-stone-200 pb-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <span className="text-xs text-[#1B1B1B]/60 font-mono">
+                  crew-profile.md
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => handleCopy(generatedProfile, 'profile')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-xs text-[#1B1B1B] font-medium transition-colors cursor-pointer"
+                  >
+                    {copiedProfile ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-[#649940]" />
+                        <span className="text-[#649940]">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleDownload(
+                        generatedProfile,
+                        'crew-profile.md',
+                        'text/markdown'
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#004364] hover:bg-[#00314a] text-xs text-white font-medium transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .md</span>
+                  </button>
+                  <button
+                    onClick={handleSaveMyCrew}
+                    disabled={isSaving}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#649940] hover:bg-[#527d34] text-xs text-white font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    title="Save foundation & crew member records to your account"
+                  >
+                    {isSaved ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Saved!</span>
+                      </>
+                    ) : isSaving ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Save my crew</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+              <div className="mt-2 text-right">
+                <span className="text-xs text-[#1B1B1B]/70 font-sans">
+                  Nothing is saved unless you choose to save it.
+                </span>
+              </div>
+              {saveError && (
+                <div className="mt-2 text-xs text-[#881719] font-medium text-right">
+                  {saveError}
+                </div>
+              )}
             </div>
 
             {/* Markdown Display */}
@@ -349,44 +454,79 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
         <div className="space-y-4">
           <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs">
             {/* Header & Ingredients label */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-200 pb-4 mb-6">
-              <div>
-                <h3 className="text-lg text-[#004364] font-bold">Your Records</h3>
-                <p className="text-xs text-[#1B1B1B]/70 mt-0.5">
-                  the ingredients — keep these to rebuild or grow your crew later
-                </p>
+            <div className="border-b border-stone-200 pb-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg text-[#004364] font-bold">Your Records</h3>
+                  <p className="text-xs text-[#1B1B1B]/70 mt-0.5">
+                    the ingredients — keep these to rebuild or grow your crew later
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => handleCopy(fullRecordsJson, 'records')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-xs text-[#1B1B1B] font-medium transition-colors cursor-pointer"
+                  >
+                    {copiedRecords ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-[#649940]" />
+                        <span className="text-[#649940]">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleDownload(
+                        fullRecordsJson,
+                        'crew-records.json',
+                        'application/json'
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-800 hover:bg-black text-xs text-white font-medium transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .json</span>
+                  </button>
+                  <button
+                    onClick={handleSaveMyCrew}
+                    disabled={isSaving}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#649940] hover:bg-[#527d34] text-xs text-white font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    title="Save foundation & crew member records to your account"
+                  >
+                    {isSaved ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Saved!</span>
+                      </>
+                    ) : isSaving ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Save my crew</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleCopy(fullRecordsJson, 'records')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-xs text-[#1B1B1B] font-medium transition-colors cursor-pointer"
-                >
-                  {copiedRecords ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-[#649940]" />
-                      <span className="text-[#649940]">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() =>
-                    handleDownload(
-                      fullRecordsJson,
-                      'crew-records.json',
-                      'application/json'
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#649940] hover:bg-[#527d34] text-xs text-white font-medium transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .json</span>
-                </button>
+              <div className="mt-2 text-right">
+                <span className="text-xs text-[#1B1B1B]/70 font-sans">
+                  Nothing is saved unless you choose to save it.
+                </span>
               </div>
+              {saveError && (
+                <div className="mt-2 text-xs text-[#881719] font-medium text-right">
+                  {saveError}
+                </div>
+              )}
             </div>
 
             {/* Collapsible toggle */}
