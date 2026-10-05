@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, getRedirectResult } from 'firebase/auth';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, RotateCcw } from 'lucide-react';
 import { AppState, FoundationRecord, SpecialistRecord } from './types';
 import { Header } from './components/Header';
 import { WelcomeState } from './components/WelcomeState';
@@ -10,6 +10,7 @@ import { DashboardState } from './components/DashboardState';
 import { AdminState } from './components/AdminState';
 import { UnsavedCrewModal } from './components/UnsavedCrewModal';
 import { UpgradeModal } from './components/UpgradeModal';
+import { Module1Experience } from './components/course/Module1Experience';
 import {
   auth,
   onAuthStateChanged,
@@ -22,8 +23,24 @@ import {
   UserProfile,
 } from './lib/firebase';
 
+const isCourseModule1Path = () =>
+  typeof window !== 'undefined' &&
+  window.location.pathname.startsWith('/course/onboarding/module-1');
+
+const isMyCrewPath = () =>
+  typeof window !== 'undefined' &&
+  (window.location.pathname.startsWith('/my-crew') || window.location.pathname.startsWith('/dashboard'));
+
 export default function App() {
-  const [appState, setAppState] = useState<AppState>('welcome');
+  const [appState, setAppState] = useState<AppState>(() => {
+    if (isCourseModule1Path()) {
+      return 'course_m1';
+    }
+    if (isMyCrewPath()) {
+      return 'dashboard';
+    }
+    return 'welcome';
+  });
   const [user, setUser] = useState<User | null>(null);
   const [foundationRecord, setFoundationRecord] = useState<FoundationRecord | null>(null);
   const [specialistRecord, setSpecialistRecord] = useState<SpecialistRecord | null>(null);
@@ -49,6 +66,23 @@ export default function App() {
   const [isModalSaving, setIsModalSaving] = useState<boolean>(false);
   const [modalSaveError, setModalSaveError] = useState<string | null>(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
+  const [isCourseResetModalOpen, setIsCourseResetModalOpen] = useState<boolean>(false);
+  const [courseSessionKey, setCourseSessionKey] = useState<number>(0);
+
+  // Handle browser popstate for /course/onboarding/module-1 and /my-crew
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isCourseModule1Path()) {
+        setAppState('course_m1');
+      } else if (isMyCrewPath()) {
+        setAppState('dashboard');
+      } else if (appState === 'course_m1') {
+        setAppState(user ? 'dashboard' : 'welcome');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [appState, user]);
 
   // Monitor Auth state changes and redirect result
   useEffect(() => {
@@ -74,12 +108,18 @@ export default function App() {
           setUserProfile(savedData.userProfile);
         }
         setIsLoadingCrew(false);
-        setAppState((prev) => (prev === 'welcome' ? 'dashboard' : prev));
+        setAppState((prev) => {
+          if (prev === 'course_m1') return 'course_m1';
+          return prev === 'welcome' ? 'dashboard' : prev;
+        });
       } else {
         setUserFoundation(null);
         setCrewMembers([]);
         setUserProfile(null);
-        setAppState((prev) => (prev === 'dashboard' || prev === 'admin' ? 'welcome' : prev));
+        setAppState((prev) => {
+          if (prev === 'course_m1') return 'course_m1';
+          return prev === 'dashboard' || prev === 'admin' ? 'welcome' : prev;
+        });
       }
     });
 
@@ -109,6 +149,44 @@ export default function App() {
     setIsLoadingCrew(false);
   };
 
+  const handleGoCourseModule1 = (targetSection?: number) => {
+    let activeSec = targetSection && targetSection >= 1 && targetSection <= 4 ? targetSection : 1;
+    if (!targetSection) {
+      try {
+        const savedSec =
+          localStorage.getItem('active_section') ||
+          localStorage.getItem('course_m1_active_section');
+        if (savedSec) {
+          const parsed = parseInt(savedSec, 10);
+          if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) {
+            activeSec = parsed;
+          }
+        } else {
+          const savedState = localStorage.getItem('course_m1_state') || sessionStorage.getItem('course_m1_state');
+          if (savedState) {
+            const parsedState = JSON.parse(savedState);
+            if (parsedState?.currentSection && parsedState.currentSection >= 1 && parsedState.currentSection <= 4) {
+              activeSec = parsedState.currentSection;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/course/onboarding/module-1?section=${activeSec}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+    setAppState('course_m1');
+  };
+
+  const handleExitCourse = () => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/my-crew');
+    }
+    setAppState(user ? 'dashboard' : 'welcome');
+  };
+
   const handleStartChat = () => {
     if (user && !isPaid && crewMembers.length >= 1) {
       setIsUpgradeModalOpen(true);
@@ -117,6 +195,16 @@ export default function App() {
     setChatInitialMode('capture');
     setAppState('chat');
   };
+
+  // Support launching builder from URL param ?start=builder
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('start') === 'builder') {
+        handleStartChat();
+      }
+    }
+  }, []);
 
   const handleRecordsReady = (foundation: FoundationRecord, specialist: SpecialistRecord) => {
     setFoundationRecord(foundation);
@@ -260,6 +348,10 @@ export default function App() {
   };
 
   const handleReset = () => {
+    if (appState === 'course_m1') {
+      setIsCourseResetModalOpen(true);
+      return;
+    }
     if (appState === 'delivery' && !isCrewSaved) {
       setPendingAction('reset');
       return;
@@ -267,10 +359,31 @@ export default function App() {
     executePendingAction('reset');
   };
 
+  const handleConfirmCourseReset = () => {
+    try {
+      localStorage.removeItem('course_m1_conversation_messages');
+      localStorage.removeItem('messages');
+      localStorage.removeItem('course_m1_state');
+      localStorage.removeItem('course_m1_active_section');
+      localStorage.removeItem('active_section');
+      localStorage.removeItem('course_m1_completed_sections');
+      localStorage.removeItem('completed_sections_array');
+      sessionStorage.removeItem('course_m1_conversation_messages');
+      sessionStorage.removeItem('course_m1_state');
+    } catch (e) {
+      console.warn('Could not clear course storage:', e);
+    }
+    setCourseSessionKey((prev) => prev + 1);
+    setIsCourseResetModalOpen(false);
+  };
+
   const handleGoDashboard = () => {
     if (appState === 'delivery' && !isCrewSaved) {
       setPendingAction('dashboard');
       return;
+    }
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/my-crew');
     }
     executePendingAction('dashboard');
   };
@@ -358,26 +471,33 @@ export default function App() {
         onSignOut={handleSignOut}
         onGoDashboard={user ? handleGoDashboard : undefined}
         onGoAdmin={user && isPaid ? handleGoAdmin : undefined}
+        onOpenPricing={() => setIsUpgradeModalOpen(true)}
+        onGoCourse={handleGoCourseModule1}
       />
 
       {authErrorMessage && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-xs sm:text-sm text-amber-800 flex items-center justify-between max-w-5xl mx-auto w-full my-2 rounded-lg">
+        <div className="bg-rose-50 border-b border-rose-200 px-4 py-3 text-xs sm:text-sm text-rose-800 flex items-center justify-between max-w-5xl mx-auto w-full my-2 rounded-lg">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{authErrorMessage}</span>
           </div>
           <button
             onClick={() => setAuthErrorMessage(null)}
-            className="text-amber-600 hover:text-amber-900 cursor-pointer p-1 rounded"
+            className="text-rose-600 hover:text-rose-900 cursor-pointer p-1 rounded"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <main className="flex-1">
+      <main className="flex-1 flex flex-col">
         {appState === 'welcome' && (
-          <WelcomeState onStart={handleStartChat} onSignIn={handleSignInOrDashboard} user={user} />
+          <WelcomeState
+            onStart={handleStartChat}
+            onSignIn={handleSignInOrDashboard}
+            user={user}
+            onGoCourse={handleGoCourseModule1}
+          />
         )}
 
         {appState === 'admin' && user && (
@@ -404,6 +524,7 @@ export default function App() {
             onTriggerUpgrade={() => setIsUpgradeModalOpen(true)}
             hasRosterUpdate={hasRosterUpdate}
             onDismissBanner={() => setHasRosterUpdate(false)}
+            onGoCourse={handleGoCourseModule1}
           />
         )}
 
@@ -414,6 +535,26 @@ export default function App() {
             initialMode={chatInitialMode}
             userFoundation={userFoundation}
             crewMembers={crewMembers}
+          />
+        )}
+
+        {appState === 'course_m1' && (
+          <Module1Experience
+            key={`course-m1-${courseSessionKey}`}
+            onExitCourse={handleExitCourse}
+            onReviewCrewProfile={() => {
+              if (typeof window !== 'undefined') {
+                window.history.pushState({}, '', '/my-crew');
+              }
+              setAppState(user ? 'dashboard' : 'welcome');
+            }}
+            onBackToDashboard={() => {
+              if (typeof window !== 'undefined') {
+                window.history.pushState({}, '', '/my-crew');
+              }
+              setAppState(user ? 'dashboard' : 'welcome');
+            }}
+            crewMemberName={crewMembers[0]?.name || userFoundation?.crewName}
           />
         )}
 
@@ -449,11 +590,47 @@ export default function App() {
         onDiscardAndLeave={handleModalDiscardAndLeave}
       />
 
-      {/* Upgrade Paid Gate Modal */}
+      {/* Upgrade Paid Gate Modal - suppressed on course routes */}
       <UpgradeModal
-        isOpen={isUpgradeModalOpen}
+        isOpen={isUpgradeModalOpen && appState !== 'course_m1' && !isCourseModule1Path()}
         onClose={() => setIsUpgradeModalOpen(false)}
       />
+
+      {/* Course Reset Confirmation Modal - Slate/Rose palette, no amber/orange */}
+      {isCourseResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-800 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center mx-auto border border-slate-700">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white">
+                Reset course progress and start fresh?
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                This will clear all course conversation messages, milestone flags, and choices, returning you to Section 1.1 with a clean initial state.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsCourseResetModalOpen(false)}
+                className="flex-1 py-2.5 px-3 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer border border-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCourseReset}
+                className="flex-1 py-2.5 px-3 text-xs font-bold bg-rose-900/40 text-rose-300 border border-rose-800 hover:bg-rose-900/70 hover:text-white rounded-xl transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Course</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

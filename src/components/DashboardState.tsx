@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   X,
   ChevronRight,
+  BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 import {
   deleteAllUserDataFromFirestore,
@@ -38,6 +40,7 @@ interface DashboardStateProps {
   onTriggerUpgrade?: () => void;
   hasRosterUpdate?: boolean;
   onDismissBanner?: () => void;
+  onGoCourse?: () => void;
 }
 
 export const DashboardState: React.FC<DashboardStateProps> = ({
@@ -55,6 +58,7 @@ export const DashboardState: React.FC<DashboardStateProps> = ({
   onTriggerUpgrade,
   hasRosterUpdate = false,
   onDismissBanner,
+  onGoCourse,
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -312,12 +316,41 @@ export const DashboardState: React.FC<DashboardStateProps> = ({
         </button>
       </div>
 
+      {/* Course Onboarding Callout Banner */}
+      {onGoCourse && (
+        <div className="p-5 bg-gradient-to-r from-sky-50 to-stone-50 border border-sky-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 bg-[#004364] text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
+              <BookOpen className="w-5 h-5 text-[#CBA62C]" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200 mb-1">
+                Course 1 · Onboarding
+              </div>
+              <h3 className="text-sm sm:text-base font-bold text-[#004364]">
+                Module 1: Set Your Intention
+              </h3>
+              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed max-w-xl">
+                Explore the foundational shift from default mirrors to configured counterparts with skin in the game. Includes portrait video briefings and the 18 sample crew members gallery.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onGoCourse}
+            className="px-4 py-2.5 bg-[#004364] hover:bg-[#00314a] text-white text-xs font-bold rounded-xl transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Open Module 1</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Main Action Bar */}
       <div className="bg-stone-50 p-6 rounded-2xl border border-stone-200 space-y-5">
         <div>
           <h2 className="text-lg font-bold text-[#1B1B1B]">Manage & Deploy Your Crew</h2>
           <p className="text-xs text-[#1B1B1B]/70 mt-1 leading-relaxed">
-            Your crew profile carries every member. Deploy it once, then call whoever the work needs.
+            Your crew profile carries every member plus Core (the core foundation). Deploy it once, then call whoever the work needs or run in Core mode.
           </p>
         </div>
 
@@ -334,7 +367,7 @@ export const DashboardState: React.FC<DashboardStateProps> = ({
               }}
               disabled={crewMembers.length === 0}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#004364] hover:bg-[#00314a] text-white font-bold text-sm sm:text-base rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Generate one Crew Profile containing ALL saved crew members"
+              title="Generate one Crew Profile containing all saved crew members plus Core"
             >
               <Sparkles className="w-4 h-4 text-[#CBA62C]" />
               <span>Get my crew profile</span>

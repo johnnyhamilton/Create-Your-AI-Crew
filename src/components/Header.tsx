@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from 'firebase/auth';
-import { ShieldCheck, RotateCcw, User as UserIcon, LayoutDashboard, LogOut } from 'lucide-react';
+import { ShieldCheck, RotateCcw, User as UserIcon, LayoutDashboard, LogOut, Sparkles, BookOpen } from 'lucide-react';
 import { AppState } from '../types';
 import { ADMIN_EMAIL } from '../lib/firebase';
 
@@ -12,6 +12,8 @@ interface HeaderProps {
   onSignOut?: () => void;
   onGoDashboard?: () => void;
   onGoAdmin?: () => void;
+  onOpenPricing?: () => void;
+  onGoCourse?: (section?: number) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,8 +24,30 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onGoDashboard,
   onGoAdmin,
+  onOpenPricing,
+  onGoCourse,
 }) => {
   const isAdmin = Boolean(user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+
+  const getActiveCourseSection = (): number => {
+    try {
+      const savedSec =
+        localStorage.getItem('active_section') ||
+        localStorage.getItem('course_m1_active_section');
+      if (savedSec) {
+        const parsed = parseInt(savedSec, 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) return parsed;
+      }
+      const savedState = localStorage.getItem('course_m1_state') || sessionStorage.getItem('course_m1_state');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed?.currentSection && parsed.currentSection >= 1 && parsed.currentSection <= 4) {
+          return parsed.currentSection;
+        }
+      }
+    } catch {}
+    return 1;
+  };
 
   return (
     <header className="w-full border-b border-stone-200 bg-white/95 backdrop-blur-xs sticky top-0 z-20">
@@ -38,6 +62,25 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {onGoCourse && (
+            <button
+              onClick={() => {
+                const sec = getActiveCourseSection();
+                onGoCourse(sec);
+              }}
+              className={`text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg border ${
+                appState === 'course_m1'
+                  ? 'bg-[#004364] text-white border-[#004364] shadow-xs'
+                  : 'text-[#004364] hover:bg-stone-100 border-stone-200'
+              }`}
+            >
+              <BookOpen className={`w-3.5 h-3.5 ${appState === 'course_m1' ? 'text-white' : 'text-[#9E7318]'}`} />
+              <span>Course: Module 1</span>
+            </button>
+          )}
+
+          {/* Pricing button removed for clean and distraction-free navigation */}
+
           {user ? (
             <>
               {appState !== 'dashboard' && onGoDashboard && (

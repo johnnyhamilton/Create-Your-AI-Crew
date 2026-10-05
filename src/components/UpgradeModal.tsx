@@ -11,7 +11,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-2xs animate-fadeIn font-sans">
-      <div className="bg-white border border-stone-200 rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative space-y-6">
+      <div className="bg-white border border-stone-200 rounded-2xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl relative space-y-6">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 transition-colors p-1 rounded-lg cursor-pointer"
@@ -33,7 +33,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           {/* Option 1 */}
           <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
@@ -64,6 +64,23 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
               </a>
               <p className="text-xs text-stone-600 leading-relaxed">
                 Everything above, plus your crew stays saved and evolves as your projects, roles, and the AI platforms themselves change.
+              </p>
+            </div>
+          </div>
+
+          {/* Option 3 */}
+          <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <a
+                href="https://buy.stripe.com/eVq5kF8172106BO8lH33W02"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center px-4 py-3 bg-[#9E7318] hover:bg-[#856011] text-white visited:text-white hover:text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer text-center"
+              >
+                Beta Testers — $29
+              </a>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                6 months of full usage with opportunities to inform product development. This is available to start only through September 30, 2026.
               </p>
             </div>
           </div>

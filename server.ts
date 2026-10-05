@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { CAPTURE_ENGINE, GENERATE_ENGINE } from "./src/constants/engines.js";
+import { CAPTURE_ENGINE, GENERATE_ENGINE, MODULE_1_SYSTEM_INSTRUCTION } from "./src/constants/engines.js";
 
 const ADMIN_EMAIL = "johnny@2itedsol.com";
 
@@ -191,6 +191,131 @@ app.post("/api/chat", async (req, res) => {
     console.error("Error in /api/chat:", err);
     console.error("FULL Gemini API Error Body:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
 
+    let errorMessage = err?.message || String(err) || "Internal server error";
+
+    if (
+      is429Error(err) ||
+      errorMessage === FRIENDLY_RATE_LIMIT_MSG ||
+      errorMessage.includes("RESOURCE_EXHAUSTED") ||
+      errorMessage.includes("429")
+    ) {
+      errorMessage = FRIENDLY_RATE_LIMIT_MSG;
+      return res.status(429).json({ error: errorMessage });
+    }
+
+    if (errorMessage.trim().startsWith("{") || errorMessage.trim().startsWith("[")) {
+      try {
+        const parsed = JSON.parse(errorMessage);
+        errorMessage =
+          parsed.error?.message ||
+          parsed.error ||
+          parsed.message ||
+          "An unexpected error occurred. Please try again.";
+      } catch (_) {
+        errorMessage = "An unexpected error occurred. Please try again.";
+      }
+    }
+
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// Course 1 Module 1 chat endpoint running Module 1 System Instruction
+app.post("/api/course/m1/chat", async (req, res) => {
+  try {
+    const { messages, state } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Invalid messages payload" });
+    }
+
+    const ai = getGenAI();
+
+    // Filter out empty messages
+    const rawMessages = messages.filter(
+      (m: any) => m && typeof m.text === "string" && m.text.trim().length > 0
+    );
+
+    if (rawMessages.length === 0) {
+      return res.status(400).json({ error: "No non-empty messages provided" });
+    }
+
+    // Embed current client state context subtly into the first user message if helpful
+    const stateContext = state
+      ? `\n[Context: Current Section=${state.currentSection}, Completed=${JSON.stringify(state.completedSections || [])}, UserProject=${state.userProject || 'None yet'}, Intention=${state.selectedIntention || 'None yet'}]`
+      : "";
+
+    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+
+    for (let i = 0; i < rawMessages.length; i++) {
+      const msg = rawMessages[i];
+      const mappedRole: "user" | "model" =
+        msg.role === "guide" || msg.role === "model" ? "model" : "user";
+
+      let text = msg.text;
+
+      // If the first message in the thread is from the guide, seed with a valid initial user turn
+      if (contents.length === 0 && mappedRole === "model") {
+        contents.push({
+          role: "user",
+          parts: [{ text: "Hello! I am ready to begin Course 1: Onboarding Your AI Crew." }],
+        });
+      }
+
+      // Append state context to the latest user message
+      if (i === rawMessages.length - 1 && mappedRole === "user" && stateContext) {
+        text += stateContext;
+      }
+
+      if (contents.length > 0 && contents[contents.length - 1].role === mappedRole) {
+        contents[contents.length - 1].parts[0].text += `\n\n${text}`;
+      } else {
+        contents.push({
+          role: mappedRole,
+          parts: [{ text }],
+        });
+      }
+    }
+
+    const isStream =
+      req.query.stream === "true" ||
+      Boolean(req.headers.accept && req.headers.accept.includes("text/event-stream"));
+
+    if (isStream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const responseStream = await ai.models.generateContentStream({
+        model: "gemini-3.8-flash",
+        contents,
+        config: {
+          systemInstruction: MODULE_1_SYSTEM_INSTRUCTION,
+        },
+      });
+
+      for await (const chunk of responseStream) {
+        const text = chunk.text || "";
+        if (text) {
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+      }
+      res.write("data: [DONE]\n\n");
+      return res.end();
+    }
+
+    const response = await callWith429Retry(() =>
+      ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents,
+        config: {
+          systemInstruction: MODULE_1_SYSTEM_INSTRUCTION,
+        },
+      })
+    );
+
+    res.json({ text: response.text || "" });
+  } catch (err: any) {
+    console.error("Error in /api/course/m1/chat:", err);
     let errorMessage = err?.message || String(err) || "Internal server error";
 
     if (

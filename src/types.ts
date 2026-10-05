@@ -1,4 +1,33 @@
-export type AppState = 'welcome' | 'chat' | 'delivery' | 'dashboard' | 'admin';
+export type AppState = 'welcome' | 'chat' | 'delivery' | 'dashboard' | 'admin' | 'course_m1';
+
+export interface CourseM1State {
+  currentSection: number;
+  completedSections: number[];
+  userProject: string;
+  selectedIntention: string;
+  selectedPath: 'path_a' | 'path_b' | null;
+  pastedProfile: string;
+  milestones: {
+    section_1_complete?: boolean;
+    welcomeCompleted?: boolean;
+    projectGrounded?: boolean;
+    intentionSelected?: boolean;
+    section_3_complete?: boolean;
+    counterpartConfigured?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface SampleCrewMember {
+  id: string;
+  name: string;
+  intention: string;
+  tagline: string;
+  role: string;
+  posture: string;
+  protects: string;
+  samplePrompt: string;
+}
 
 export interface Message {
   id: string;

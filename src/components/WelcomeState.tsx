@@ -7,9 +7,10 @@ interface WelcomeStateProps {
   onStart: () => void;
   onSignIn: () => void;
   user?: User | null;
+  onGoCourse?: () => void;
 }
 
-export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn, user }) => {
+export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn, user, onGoCourse }) => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   return (
@@ -60,6 +61,17 @@ export const WelcomeState: React.FC<WelcomeStateProps> = ({ onStart, onSignIn, u
           <span>Build your crew</span>
           <ArrowRight className="w-4 h-4" />
         </button>
+
+        {onGoCourse && (
+          <button
+            onClick={onGoCourse}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-stone-50 text-[#004364] border border-stone-300 font-semibold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#CBA62C]" />
+            <span>Course 1: Onboarding Your AI Crew (Module 1)</span>
+            <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+          </button>
+        )}
 
         {/* Small time hint below button */}
         <p className="text-xs text-[#1B1B1B]/60 font-sans flex items-center gap-1.5 justify-center">

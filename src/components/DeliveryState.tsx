@@ -321,7 +321,11 @@ export const DeliveryState: React.FC<DeliveryStateProps> = ({
             <span>Crew Ready for Deployment</span>
           </span>
           <h2 className="text-2xl sm:text-3xl text-[#004364] font-bold mt-1">
-            {specialistRecord.role || 'Your Specialist AI Member'}
+            {crewToAssemble.length > 1
+              ? `${personaName} — ${crewToAssemble.length} Crew Members plus Core`
+              : specialistRecord.role
+              ? `${specialistRecord.role} (plus Core)`
+              : 'Your Specialist AI Member plus Core'}
           </h2>
         </div>
         <button
